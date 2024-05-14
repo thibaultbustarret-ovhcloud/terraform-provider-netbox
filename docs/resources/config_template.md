@@ -23,9 +23,7 @@ resource "netbox_config_template" "test" {
 	name = "test"
 	description = "test description"
 	template_code = "hostname {{ name }}"
-	environment_params = {
-		name = "my-hostname"
-	}
+	environment_params = jsonencode({"name" = "my-hostname"})
 }
 ```
 
@@ -40,7 +38,7 @@ resource "netbox_config_template" "test" {
 ### Optional
 
 - `description` (String)
-- `environment_params` (Map of String)
+- `environment_params` (String) Defaults to `{}`.
 - `tags` (Set of String)
 
 ### Read-Only

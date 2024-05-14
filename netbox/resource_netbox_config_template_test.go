@@ -25,15 +25,13 @@ resource "netbox_config_template" "test" {
 	name = "%[1]s"
 	description = "%[1]s description"
 	template_code = "hostname {{ name }}"
-	environment_params = {
-		name = "my-hostname"
-	}
+	environment_params = jsonencode({"name" = "my-hostname"})
 }`, testName, randomSlug),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("netbox_config_template.test", "name", testName),
 					resource.TestCheckResourceAttr("netbox_config_template.test", "description", fmt.Sprintf("%s description", testName)),
 					resource.TestCheckResourceAttr("netbox_config_template.test", "template_code", "hostname {{ name }}"),
-					resource.TestCheckResourceAttr("netbox_config_template.test", "environment_params.name", "my-hostname"),
+					resource.TestCheckResourceAttr("netbox_config_template.test", "environment_params", "{\"name\":\"my-hostname\"}"),
 				),
 			},
 			{

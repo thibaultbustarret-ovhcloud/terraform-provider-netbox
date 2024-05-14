@@ -2,7 +2,7 @@ package netbox
 
 import (
 	"context"
-	"log"
+	"encoding/json"
 	"strconv"
 
 	"github.com/fbreckle/go-netbox/netbox/client"
@@ -40,8 +40,10 @@ Context data is made available to devices and/or virtual machines based on their
 				Required: true,
 			},
 			"environment_params": {
-				Type:     schema.TypeMap,
-				Optional: true,
+				Type:         schema.TypeString,
+				Optional:     true,
+				Default:      "{}",
+				ValidateFunc: validation.StringIsJSON,
 			},
 			tagsKey: tagsSchema,
 		},
@@ -59,16 +61,27 @@ func resourceNetboxConfigTemplateCreate(ctx context.Context, d *schema.ResourceD
 	name := d.Get("name").(string)
 	description := d.Get("description").(string)
 	templateCode := d.Get("template_code").(string)
-	environmentParams := d.Get("environment_params").(map[string]interface{})
 
 	tags, _ := getNestedTagListFromResourceDataSet(api, d.Get(tagsKey))
 
 	data := models.WritableConfigTemplate{
-		Name:              &name,
-		Description:       description,
-		TemplateCode:      &templateCode,
-		EnvironmentParams: environmentParams,
-		Tags:              tags,
+		Name:         &name,
+		Description:  description,
+		TemplateCode: &templateCode,
+		Tags:         tags,
+	}
+
+	// Unmarshal environment_params and add it to data if valid
+	environmentParamsJSON, ok := d.GetOk("environment_params")
+
+	if ok {
+		var environmentParams any
+		err := json.Unmarshal([]byte(environmentParamsJSON.(string)), &environmentParams)
+		if err != nil {
+			return diag.FromErr(err)
+		}
+
+		data.EnvironmentParams = environmentParams
 	}
 
 	params := extras.NewExtrasConfigTemplatesCreateParams().WithData(&data)
@@ -110,10 +123,16 @@ func resourceNetboxConfigTemplateRead(ctx context.Context, d *schema.ResourceDat
 	d.Set("description", tmpl.Description)
 	d.Set("template_code", tmpl.TemplateCode)
 
-	// print environment_params
-	log.Printf("[DEBUG] Environment Params: %v", tmpl.EnvironmentParams)
+	if tmpl.EnvironmentParams != nil {
+		environmentParamsJSON, err := json.Marshal(tmpl.EnvironmentParams)
+		if err != nil {
+			return diag.FromErr(err)
+		}
 
-	d.Set("environment_params", tmpl.EnvironmentParams)
+		d.Set("environment_params", string(environmentParamsJSON))
+	} else {
+		d.Set("environment_params", "{}")
+	}
 
 	return diags
 }
@@ -128,16 +147,27 @@ func resourceNetboxConfigTemplateUpdate(ctx context.Context, d *schema.ResourceD
 	name := d.Get("name").(string)
 	description := d.Get("description").(string)
 	templateCode := d.Get("template_code").(string)
-	environmentParams := d.Get("environment_params").(map[string]interface{})
 
 	tags, _ := getNestedTagListFromResourceDataSet(api, d.Get(tagsKey))
 
 	data := models.WritableConfigTemplate{
-		Name:              &name,
-		Description:       description,
-		TemplateCode:      &templateCode,
-		EnvironmentParams: environmentParams,
-		Tags:              tags,
+		Name:         &name,
+		Description:  description,
+		TemplateCode: &templateCode,
+		Tags:         tags,
+	}
+
+	// Unmarshal environment_params and add it to data if valid
+	environmentParamsJSON, ok := d.GetOk("environment_params")
+
+	if ok {
+		var environmentParams any
+		err := json.Unmarshal([]byte(environmentParamsJSON.(string)), &environmentParams)
+		if err != nil {
+			return diag.FromErr(err)
+		}
+
+		data.EnvironmentParams = environmentParams
 	}
 
 	params := extras.NewExtrasConfigTemplatesUpdateParams().WithID(id).WithData(&data)
